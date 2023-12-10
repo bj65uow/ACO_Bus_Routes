@@ -1,5 +1,5 @@
 from plot_nodes import plot
-from flask import Flask, render_template_string
+from flask import Flask
 
 figure = plot()
 

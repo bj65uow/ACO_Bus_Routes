@@ -1,7 +1,7 @@
-from plot_nodes import plot
+from plot_nodes import plot, generate_map
 from flask import Flask
 
-figure = plot()
+figure = generate_map(plot())
 
 app = Flask(__name__)
 

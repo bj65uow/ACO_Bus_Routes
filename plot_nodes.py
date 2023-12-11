@@ -77,7 +77,7 @@ def generate_map(joined_data):
     map_figure = joined_data.explore()  # Requires folium, matplotlib, and mapclassify
     return map_figure
 
-
+# Create geodataframe with bus stops/population data
 def plot():
     # TODO: Remove hard coded values
     # Define map boundaries for Tauranga, New Zealand
@@ -110,9 +110,8 @@ def plot():
     mean_pop = joined_data["sum_population"].mean()
 
     # Create an interactive map and save it as an HTML file
-    return generate_map(joined_data)
+    return joined_data
 
 
 if __name__ == "__main__":
-    figure = plot()
-    print((figure.get_root().render())[0:100])
+    figure = generate_map(plot())

@@ -73,10 +73,6 @@ def process_data(bus_stop_features, census_data):
     return joined_data
 
 
-def generate_map(joined_data):
-    map_figure = joined_data.explore()  # Requires folium, matplotlib, and mapclassify
-    return map_figure
-
 # Create geodataframe with bus stops/population data
 def plot():
     # TODO: Remove hard coded values
@@ -114,4 +110,5 @@ def plot():
 
 
 if __name__ == "__main__":
+    from create_display import generate_map
     figure = generate_map(plot())

@@ -1,6 +1,8 @@
 # Importing GIS libraries
 import osmnx as ox
 import geopandas as gpd
+from requests import Request
+from owslib.wfs import WebFeatureService
 
 
 # Download OSM bus stop map features for Tauranga
@@ -31,37 +33,59 @@ def download_bus_stop_features(bounds):
         ],
         inplace=True,
     )  # Many empty fields
+
+    # Bus stops taken from BOPRC API, OSM is similar enough and can be applied to anywhere
+    # bus_stop_features = gpd.read_file('https://gis.boprc.govt.nz/server2/rest/services/BayOfPlentyMaps/Community/MapServer/3/query?where=1%3D1&outFields=BusStopName,BusStopID,ZoneID,StopLatitude,StopLongitude&outSR=4326&f=json') # They scrape from Google Maps?
+    # bus_stop_features = bus_stop_features[bus_stop_features['ZoneID'].isin('BOP00_1A', 'BOP00_2A', 'BOP00_2B')] # Tauranga Urban, Te Puke, Katikati/Ōmokoroa/Bethlehem
     return bus_stop_features
 
 
 # Read in population meshblock data,
 # removing unnecessary data, and combining General and Māori electorate populations
 def read_census_data(shapefile_path, bbox):
-    census_data = gpd.read_file(shapefile_path, bbox=bbox)
-    census_data = census_data.to_crs(
-        epsg=4326
-    )  # Convert to standard coordinate reference system for easier manipulation
+    # URL for WFS backend
+    url = "https://datafinder.stats.govt.nz/services;key=1f0a305f72954361a9b5a7aa6750f2db/wfs"
+
+    # Initialize
+    wfs = WebFeatureService(url=url)
+
+    # Fetch the census population layer
+    layer_name = "layer-104578"
+
+    # Specify the parameters for fetching the data
+    params = dict(
+        service="WFS",
+        version="2.0.0",
+        request="GetFeature",
+        typeName=layer_name,
+        outputFormat="json",
+        SRSName="EPSG:4326",
+        BBOX=f'{bbox["west"]},{bbox["south"]},{bbox["east"]},{bbox["north"]},EPSG:4326',
+    )  # Bounds, minX, minY, maxX, maxY
+    # Parse the URL with parameters
+    wfs_request_url = Request("GET", url, params=params).prepare().url
+
+    # Read data from URL
+    census_data = gpd.read_file(wfs_request_url)
+
+    # Now retreived from API
+    # census_data = gpd.read_file(shapefile_path, bbox=bbox)
+    # census_data = census_data.to_crs(epsg=4326)  # Convert to standard coordinate reference system for easier manipulation
+
+    # Remove unneeded data
+    census_data = census_data[
+        ["General_Electoral_Population", "Maori_Electoral_Population", "geometry"]
+    ]
+
+    census_data["sum_population"] = census_data["General_Electoral_Population"].replace(
+        -999, 0
+    ) + census_data["Maori_Electoral_Population"].replace(
+        -999, 0
+    )  # 'General_Electorial_Population' (General_El in shape file) = population count on general roll column, 'Maori_Electorial_Population' (Maori_Elec in shape file) = population count on Māori roll column
     census_data.drop(
-        columns=[
-            "MB2020_V2_",
-            "GED2020_V1",
-            "GED2020__1",
-            "GED2020__2",
-            "MED2020_V1",
-            "MED2020__1",
-            "MED2020__2",
-            "LAND_AREA_",
-            "AREA_SQ_KM",
-            "Shape_Leng",
-        ],
+        columns=["General_Electoral_Population", "Maori_Electoral_Population"],
         inplace=True,
     )
-    census_data["sum_population"] = census_data["General_El"].replace(
-        -999, 0
-    ) + census_data["Maori_Elec"].replace(
-        -999, 0
-    )  # 'General_El' = population count on general roll column, 'Maori_Elec' = population count on Māori roll column
-    census_data.drop(columns=["General_El", "Maori_Elec"], inplace=True)
     return census_data
 
 
@@ -84,19 +108,11 @@ def plot():
         "west": 176.0593,
     }
 
-    # Census data is in ESPG:2193, these bounds are similar to the ones above
-    tauranga_bbox = (
-        1869316.8619308192,
-        5810699.85703883,
-        1910089.458412611,
-        5832327.558897601,
-    )  # Format: min x, min y, max x, max y
-
     bus_stop_features = download_bus_stop_features(tauranga_bounds)
 
     # Read census data shapefile within the same boundaries
     census_shapefile_path = "data/statsnz-2018-census-electoral-population-meshblock-2020-SHP/2018-census-electoral-population-meshblock-2020.shp"
-    census_data = read_census_data(census_shapefile_path, tauranga_bbox)
+    census_data = read_census_data(census_shapefile_path, tauranga_bounds)
 
     # Process and join data
     joined_data = process_data(bus_stop_features, census_data)
@@ -111,4 +127,5 @@ def plot():
 
 if __name__ == "__main__":
     from create_display import generate_map
+
     figure = generate_map(plot())

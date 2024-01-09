@@ -2,11 +2,14 @@ import networkx as nx
 import random
 import matplotlib.pyplot as plt
 
+from itertools import combinations
+import osmnx as ox
 
-def ant_colony_optimization(
+
+def ant_colony_optimisation(
     graph, source, destination, num_ants, iterations, evaporation_rate, alpha=1, beta=1
 ):
-    # Initialize pheromone levels
+    # Initialise pheromone levels
     pheromone_levels = {edge: 1.0 for edge in graph.edges()}
 
     # Best solution tracking
@@ -16,9 +19,12 @@ def ant_colony_optimization(
     i = 0
     for _ in range(iterations):
         ant_paths = []
-        print("Iteration " + str(i))
+        # print("Iteration " + str(i))
         i += 1
+        j = 1
         for ant in range(num_ants):
+            print('Iteration ' + str(i) + ', ant ' + str(j) + '  ', end='\r')
+            j += 1
             # Ant movement
             ant_path = ant_move(
                 graph, source, destination, pheromone_levels, alpha, beta
@@ -34,35 +40,35 @@ def ant_colony_optimization(
                 best_solution = path
                 best_distance = distance
 
-    # Visualize the final result
-    visualize_result(graph, best_solution, pheromone_levels)
+    # Visualise the final result
+    visualise_result(graph, best_solution, pheromone_levels)
 
     return best_solution, best_distance
 
 
-def visualize_result(graph, best_path, pheromone_levels):
+def visualise_result(graph, best_path, pheromone_levels):
     plt.figure(figsize=(10, 8))
 
     # Plot the graph
     pos = nx.spring_layout(graph)
-    nx.draw(graph, pos, with_labels=True)
+    nx.draw(graph, pos, with_labels=False)
 
     # Highlight the best path
     edges = [(best_path[i], best_path[i + 1]) for i in range(len(best_path) - 1)]
-    nx.draw_networkx_edges(graph, pos, edgelist=edges, edge_color="r", width=2)
+    nx.draw_networkx_edges(graph, pos, edgelist=edges, edge_color="r", width=20)
 
     # Display edge weights
-    edge_labels = {
-        (
-            edge[0],
-            edge[1],
-        ): f'{pheromone:.2f}\n{graph[edge[0]][edge[1]].get("weight", 1.0):.2f}'
-        for edge, pheromone in pheromone_levels.items()
-    }
-    nx.draw_networkx_edge_labels(graph, pos, edge_labels=edge_labels)
+    # edge_labels = {
+    #     (
+    #         edge[0],
+    #         edge[1],
+    #     ): f'{pheromone:.2f}\n{graph[edge[0]][edge[1]].get("weight", 1.0):.2f}'
+    #     for edge, pheromone in pheromone_levels.items()
+    # }
+    # nx.draw_networkx_edge_labels(graph, pos, edge_labels=edge_labels)
 
     # Save or show the plot
-    plt.title("Ant Colony Optimization - Final Result")
+    plt.title("Ant Colony Optimisation - Final Result")
     plt.show()
 
 
@@ -86,7 +92,7 @@ def ant_move(graph, source, destination, pheromone_levels, alpha, beta):
 
     return path
 
-
+# TODO: Make probabilities match original paper
 def calculate_probabilities(
     graph, current_node, destination, pheromone_levels, alpha, beta
 ):
@@ -161,28 +167,88 @@ def update_pheromone(graph, pheromone_levels, ant_paths, evaporation_rate, Q=1.0
             Q / path_distance
         )  # Q is a constant representing the pheromone deposit
         for i in range(len(ant_path) - 1):
-            edge = (
-                min(ant_path[i], ant_path[i + 1]),
-                max(ant_path[i], ant_path[i + 1]),
-            )
-            pheromone_levels[edge] += pheromone_deposit
+            try:
+                edge = (
+                    min(ant_path[i], ant_path[i + 1]),
+                    max(ant_path[i], ant_path[i + 1]),
+                )
+                pheromone_levels[edge] += pheromone_deposit
+            except KeyError:
+                edge = (
+                    max(ant_path[i], ant_path[i + 1]),
+                    min(ant_path[i], ant_path[i + 1]),
+                )
+                pheromone_levels[edge]
 
+
+def create_graph_with_distances(bounds):
+    bus_stops = ox.features_from_bbox(**bounds, tags={"highway": "bus_stop"})
+
+    # Create a NetworkX graph and add nodes
+    G = nx.Graph()
+    for index, row in bus_stops.iterrows():
+        G.add_node(row['ref'], pos=(row['geometry'].x, row['geometry'].y))
+
+    nan_nodes = []
+    for node in G.nodes():
+        try:
+            int(node)
+        except ValueError:
+            nan_nodes.append(node)
+    #     if math.isnan(node):
+    #         nan_nodes.append(node)
+    G.remove_nodes_from(nan_nodes)
+
+    # Add edges with distances
+    for (node1, data1), (node2, data2) in combinations(G.nodes(data=True), 2):
+        distance = (
+            ((data1['pos'][0] - data2['pos'][0])**2 + (data1['pos'][1] - data2['pos'][1])**2)**0.5
+        )
+        G.add_edge(node1, node2, weight=distance)
+
+    return G
+
+# Bounds for Tauranga, replace with your desired bounding box
+tauranga_bounds = {
+    "north": -37.6039,
+    "east": 176.5125,
+    "south": -37.8114,
+    "west": 176.0593,
+}
+
+G = create_graph_with_distances(tauranga_bounds)
+
+
+def find_closest_node(graph, target_coordinates):
+    min_distance = float('inf')
+    closest_node = None
+
+    for node, data in graph.nodes(data=True):
+        node_coordinates = data['pos']
+        distance = ((node_coordinates[0] - target_coordinates[0])**2 + (node_coordinates[1] - target_coordinates[1])**2)**0.5
+
+        if distance < min_distance:
+            min_distance = distance
+            closest_node = node
+
+    return closest_node
 
 # Example usage
-G = nx.complete_graph(20)  # Replace with your graph
-# Add random weights to the edges
-for edge in G.edges():
-    G[edge[0]][edge[1]]["weight"] = random.uniform(
-        1, 100
-    )  # Replace the range as needed
+source_coordinates = (176.167548, -37.682783)  # Replace with your source coordinates
+destination_coordinates = (176.283595, -37.703196)  # Replace with your destination coordinates
 
-source_node = 0
-destination_node = 19
-num_ants = 20
-iterations = 100
-evaporation_rate = 0.1
+source_node = find_closest_node(G, source_coordinates)
+destination_node = find_closest_node(G, destination_coordinates)
 
-best_path, best_distance = ant_colony_optimization(
+print(f"Closest Source Node: {source_node}")
+print(f"Closest Destination Node: {destination_node}")
+
+
+num_ants = 10
+iterations = 10
+evaporation_rate = 0.2
+
+best_path, best_distance = ant_colony_optimisation(
     G, source_node, destination_node, num_ants, iterations, evaporation_rate
 )
 print(f"Best Path: {best_path}")

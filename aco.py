@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 from itertools import combinations
 import osmnx as ox
-
+from shapely.geometry import Point
 
 def ant_colony_optimisation(
     graph, source, destination, num_ants, iterations, evaporation_rate, alpha=1, beta=1
@@ -40,10 +40,13 @@ def ant_colony_optimisation(
                 best_solution = path
                 best_distance = distance
 
-    # Visualise the final result
-    visualise_result(graph, best_solution, pheromone_levels)
+    # Convert node labels to Shapely Point objects
+    best_path_points = [Point(graph.nodes[node]['pos']) for node in best_solution]
 
-    return best_solution, best_distance
+    # Visualise the final result
+    # visualise_result(graph, best_solution, pheromone_levels)
+
+    return best_path_points, best_distance
 
 
 def visualise_result(graph, best_path, pheromone_levels):
@@ -233,23 +236,23 @@ def find_closest_node(graph, target_coordinates):
 
     return closest_node
 
-# Example usage
-source_coordinates = (176.167548, -37.682783)  # Replace with your source coordinates
-destination_coordinates = (176.283595, -37.703196)  # Replace with your destination coordinates
+# # Example usage
+# source_coordinates = (176.167548, -37.682783)  # Replace with your source coordinates
+# destination_coordinates = (176.283595, -37.703196)  # Replace with your destination coordinates
 
-source_node = find_closest_node(G, source_coordinates)
-destination_node = find_closest_node(G, destination_coordinates)
+# source_node = find_closest_node(G, source_coordinates)
+# destination_node = find_closest_node(G, destination_coordinates)
 
-print(f"Closest Source Node: {source_node}")
-print(f"Closest Destination Node: {destination_node}")
+# print(f"Closest Source Node: {source_node}")
+# print(f"Closest Destination Node: {destination_node}")
 
 
-num_ants = 10
-iterations = 10
-evaporation_rate = 0.2
+# num_ants = 10
+# iterations = 10
+# evaporation_rate = 0.2
 
-best_path, best_distance = ant_colony_optimisation(
-    G, source_node, destination_node, num_ants, iterations, evaporation_rate
-)
-print(f"Best Path: {best_path}")
-print(f"Best Distance: {best_distance}")
+# best_path, best_distance = ant_colony_optimisation(
+#     G, source_node, destination_node, num_ants, iterations, evaporation_rate
+# )
+# # print(f"Best Path: {best_path}")
+# print(f"Best Distance: {best_distance}")

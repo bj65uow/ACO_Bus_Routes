@@ -1,6 +1,5 @@
 import networkx as nx
 import random
-import matplotlib.pyplot as plt
 
 from itertools import combinations
 import osmnx as ox
@@ -47,32 +46,6 @@ def ant_colony_optimisation(
     # visualise_result(graph, best_solution, pheromone_levels)
 
     return best_path_points, best_distance
-
-
-def visualise_result(graph, best_path, pheromone_levels):
-    plt.figure(figsize=(10, 8))
-
-    # Plot the graph
-    pos = nx.spring_layout(graph)
-    nx.draw(graph, pos, with_labels=False)
-
-    # Highlight the best path
-    edges = [(best_path[i], best_path[i + 1]) for i in range(len(best_path) - 1)]
-    nx.draw_networkx_edges(graph, pos, edgelist=edges, edge_color="r", width=20)
-
-    # Display edge weights
-    # edge_labels = {
-    #     (
-    #         edge[0],
-    #         edge[1],
-    #     ): f'{pheromone:.2f}\n{graph[edge[0]][edge[1]].get("weight", 1.0):.2f}'
-    #     for edge, pheromone in pheromone_levels.items()
-    # }
-    # nx.draw_networkx_edge_labels(graph, pos, edge_labels=edge_labels)
-
-    # Save or show the plot
-    plt.title("Ant Colony Optimisation - Final Result")
-    plt.show()
 
 
 # Ant movement

@@ -6,7 +6,7 @@ import osmnx as ox
 from shapely.geometry import Point
 
 def ant_colony_optimisation(
-    graph, source, destination, num_ants, iterations, evaporation_rate, alpha=1, beta=1
+    graph, source, destination, num_ants, iterations, evaporation_rate, alpha=0.7, beta=0.3
 ):
     # Initialise pheromone levels
     pheromone_levels = {edge: 1.0 for edge in graph.edges()}
@@ -70,7 +70,7 @@ def ant_move(graph, source, destination, pheromone_levels, alpha, beta):
 
 # TODO: Make probabilities match original paper
 def calculate_probabilities(
-    graph, current_node, destination, pheromone_levels, alpha, beta
+    graph, current_node, destination, pheromone_levels, alpha, beta, gamma = 1
 ):
     neighbors = list(graph.neighbors(current_node))
     probabilities = []
@@ -85,18 +85,22 @@ def calculate_probabilities(
             "weight", 1.0
         )  # Assuming weighted graph
 
+        # Add the "population" attribute to the calculation
+        population = graph.nodes[neighbor].get("sum_population", 60)
+        normalised_pop = (population - 6)/(150-6)
+
         # Calculate the probability using the formula for ant movement
-        probability = (pheromone**alpha) * ((1 / distance) ** beta)
+        probability = (pheromone**alpha) * ((1 / distance) ** beta) * (normalised_pop ** gamma)
         probabilities.append((neighbor, probability))
 
     # Normalize probabilities
     total_probability = sum(probability for _, probability in probabilities)
-    normalized_probabilities = [
+    normalised_probabilities = [
         (neighbor, probability / total_probability)
         for neighbor, probability in probabilities
     ]
 
-    return normalized_probabilities
+    return normalised_probabilities
 
 
 def choose_next_node(graph, current_node, probabilities):
@@ -157,13 +161,11 @@ def update_pheromone(graph, pheromone_levels, ant_paths, evaporation_rate, Q=1.0
                 pheromone_levels[edge]
 
 
-def create_graph_with_distances(bounds):
-    bus_stops = ox.features_from_bbox(**bounds, tags={"highway": "bus_stop"})
-
+def create_graph_with_distances(bus_stops):
     # Create a NetworkX graph and add nodes
     G = nx.Graph()
     for index, row in bus_stops.iterrows():
-        G.add_node(row['ref'], pos=(row['geometry'].x, row['geometry'].y))
+        G.add_node(row['ref'])
 
     nan_nodes = []
     for node in G.nodes():
@@ -171,9 +173,11 @@ def create_graph_with_distances(bounds):
             int(node)
         except ValueError:
             nan_nodes.append(node)
-    #     if math.isnan(node):
-    #         nan_nodes.append(node)
     G.remove_nodes_from(nan_nodes)
+
+    # Add node attributes
+    pos_dict = {row['ref']: (row['geometry'].x, row['geometry'].y, row['sum_population']) for index, row in bus_stops.iterrows()}
+    nx.set_node_attributes(G, pos_dict, 'pos')
 
     # Add edges with distances
     for (node1, data1), (node2, data2) in combinations(G.nodes(data=True), 2):
@@ -183,16 +187,6 @@ def create_graph_with_distances(bounds):
         G.add_edge(node1, node2, weight=distance)
 
     return G
-
-# Bounds for Tauranga, replace with your desired bounding box
-tauranga_bounds = {
-    "north": -37.6039,
-    "east": 176.5125,
-    "south": -37.8114,
-    "west": 176.0593,
-}
-
-G = create_graph_with_distances(tauranga_bounds)
 
 
 def find_closest_node(graph, target_coordinates):

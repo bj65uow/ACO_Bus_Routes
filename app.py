@@ -23,15 +23,7 @@ def generate():
     source_coordinates = (176.167548, -37.682783)  # Replace with your source coordinates
     destination_coordinates = (176.331999, -37.720432)  # Replace with your destination coordinates
 
-    # Bounds for Tauranga, replace with your desired bounding box
-    tauranga_bounds = {
-        "north": -37.6039,
-        "east": 176.5125,
-        "south": -37.8114,
-        "west": 176.0593,
-    }
-
-    G = aco.create_graph_with_distances(tauranga_bounds)
+    G = aco.create_graph_with_distances(graph)
 
     source_node = aco.find_closest_node(G, source_coordinates)
     destination_node = aco.find_closest_node(G, destination_coordinates)

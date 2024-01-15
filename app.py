@@ -1,5 +1,5 @@
-from flask import Flask, render_template
-from plot_nodes import plot
+from flask import Flask, render_template, request, jsonify
+from plot_nodes import plot_stops, plot_census
 from create_display import generate_map
 import aco
 import geopandas as gpd
@@ -12,38 +12,55 @@ app = Flask(__name__)
 def index():
     return render_template('index.html')
 
-@app.route('/generate')
-def generate():
-    graph = plot()
+@app.route('/generate_stops')
+def generate_stops():
+    global stops
+    stops = plot_stops()
+    
+    # Create leaflet
+    figure = generate_map(stops)
 
-    # TODO: Update generate_line to use new algorithm
-    # Hardcoded route start/end points
-    start_point = (graph[graph['ref'] == '2401'])['geometry'].iloc[0]
-    end_point = (graph[graph['ref'] == '2169'])['geometry'].iloc[0]
-    source_coordinates = (176.167548, -37.682783)  # Replace with your source coordinates
-    destination_coordinates = (176.331999, -37.720432)  # Replace with your destination coordinates
+    map_html = figure.get_root()._repr_html_()
+    return map_html
 
+@app.route('/generate_routes')
+def generate_routes():
+    global stops
+    print('Adding population data')
+    graph = plot_census(stops)
+
+    print('Adding edges')
     G = aco.create_graph_with_distances(graph)
 
-    source_node = aco.find_closest_node(G, source_coordinates)
-    destination_node = aco.find_closest_node(G, destination_coordinates)
-
-    print(f"Closest Source Node: {source_node}")
-    print(f"Closest Destination Node: {destination_node}")
-
+    start_nodes = request.args.getlist('start_node')
+    end_nodes = request.args.getlist('end_node')
 
     num_ants = 10
     iterations = 10
     evaporation_rate = 0.2
 
-    best_path, best_distance = aco.ant_colony_optimisation(
-        G, source_node, destination_node, num_ants, iterations, evaporation_rate
-    )
+    # Initialize an array to store the best paths
+    best_paths = []
 
-    # Get line output
-    lines = [LineString(best_path)]
-    gdf = gpd.GeoDataFrame(geometry=lines)
-    graph = pd.concat([graph, gdf])
+    # Iterate through each route
+    for start_value, end_value in zip(start_nodes, end_nodes):
+        source_node = aco.find_node(G, start_value)
+        destination_node = aco.find_node(G, end_value)
+
+        if source_node and destination_node is not None:
+            best_path, best_distance = aco.ant_colony_optimisation(
+                G, source_node, destination_node, num_ants, iterations, evaporation_rate
+            )
+
+            # Append the best path to the array
+            best_paths.append(best_path)
+
+    # Get line output for each best path
+    lines = [LineString(path) for path in best_paths]
+    line_gdf = gpd.GeoDataFrame(geometry=lines)
+
+    # Display line_gdf and origin graph together
+    graph = pd.concat([graph, line_gdf])
 
     # Create leaflet
     figure = generate_map(graph)

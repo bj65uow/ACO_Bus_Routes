@@ -42,7 +42,7 @@ def download_bus_stop_features(bounds):
 
 # Read in population meshblock data,
 # removing unnecessary data, and combining General and Māori electorate populations
-def read_census_data(shapefile_path, bbox):
+def read_census_data(bbox):
     # URL for WFS backend
     url = "https://datafinder.stats.govt.nz/services;key=1f0a305f72954361a9b5a7aa6750f2db/wfs"
 
@@ -98,7 +98,7 @@ def process_data(bus_stop_features, census_data):
 
 
 # Create geodataframe with bus stops/population data
-def plot():
+def plot_stops():
     # TODO: Remove hard coded values
     # Define map boundaries for Tauranga, New Zealand
     tauranga_bounds = {
@@ -110,22 +110,34 @@ def plot():
 
     bus_stop_features = download_bus_stop_features(tauranga_bounds)
 
+    return bus_stop_features
+
+def plot_census(stops):
+    # TODO: Remove hard coded values
+    # Define map boundaries for Tauranga, New Zealand
+    tauranga_bounds = {
+        "north": -37.6039,
+        "east": 176.5125,
+        "south": -37.8114,
+        "west": 176.0593,
+    }
+
     # Read census data shapefile within the same boundaries
-    census_shapefile_path = "data/statsnz-2018-census-electoral-population-meshblock-2020-SHP/2018-census-electoral-population-meshblock-2020.shp"
-    census_data = read_census_data(census_shapefile_path, tauranga_bounds)
+    census_data = read_census_data(tauranga_bounds)
 
     # Process and join data
-    joined_data = process_data(bus_stop_features, census_data)
+    joined_data = process_data(stops, census_data)
 
     # Calculate the mean of the summed population in the joined data
     # (may be used in future data)
-    mean_pop = joined_data["sum_population"].mean()
+    #mean_pop = joined_data["sum_population"].mean()
 
     # Create an interactive map and save it as an HTML file
     return joined_data
 
 
-if __name__ == "__main__":
-    from create_display import generate_map
 
-    figure = generate_map(plot())
+# if __name__ == "__main__":
+#     from create_display import generate_map
+
+#     figure = generate_map(plot())

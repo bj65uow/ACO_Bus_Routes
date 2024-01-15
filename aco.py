@@ -6,7 +6,7 @@ import osmnx as ox
 from shapely.geometry import Point
 
 def ant_colony_optimisation(
-    graph, source, destination, num_ants, iterations, evaporation_rate, alpha=0.7, beta=0.3
+    graph, source, destination, num_ants, iterations, evaporation_rate, alpha=1, beta=1
 ):
     # Initialise pheromone levels
     pheromone_levels = {edge: 1.0 for edge in graph.edges()}
@@ -70,7 +70,7 @@ def ant_move(graph, source, destination, pheromone_levels, alpha, beta):
 
 # TODO: Make probabilities match original paper
 def calculate_probabilities(
-    graph, current_node, destination, pheromone_levels, alpha, beta, gamma = 1
+    graph, current_node, destination, pheromone_levels, alpha, beta, gamma = 0
 ):
     neighbors = list(graph.neighbors(current_node))
     probabilities = []
@@ -189,19 +189,23 @@ def create_graph_with_distances(bus_stops):
     return G
 
 
-def find_closest_node(graph, target_coordinates):
-    min_distance = float('inf')
-    closest_node = None
+def find_node(graph, target_node):
+    # min_distance = float('inf')
+    # closest_node = None
 
-    for node, data in graph.nodes(data=True):
-        node_coordinates = data['pos']
-        distance = ((node_coordinates[0] - target_coordinates[0])**2 + (node_coordinates[1] - target_coordinates[1])**2)**0.5
+    # for node, data in graph.nodes(data=True):
+    #     node_coordinates = data['pos']
+    #     distance = ((node_coordinates[0] - target_coordinates[0])**2 + (node_coordinates[1] - target_coordinates[1])**2)**0.5
 
-        if distance < min_distance:
-            min_distance = distance
-            closest_node = node
+    #     if distance < min_distance:
+    #         min_distance = distance
+    #         closest_node = node
 
-    return closest_node
+    # return closest_node
+    if target_node in graph.nodes:
+        return target_node
+    else:
+        print(target_node + "not found")
 
 # # Example usage
 # source_coordinates = (176.167548, -37.682783)  # Replace with your source coordinates

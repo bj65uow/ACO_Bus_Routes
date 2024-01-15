@@ -1,0 +1,20 @@
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    display: flex;
+}
+
+#sidebar {
+    width: 300px;
+    padding: 20px;
+    background-color: #f1f1f1;
+}
+
+#map-container {
+    flex-grow: 1;
+}
+
+.bus_stop {
+    padding: 20px;
+    border-style: solid;
+}

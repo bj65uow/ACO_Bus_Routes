@@ -3,11 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/main.css') }}" />
     <title>Folium Map</title>
+    <script src="{{ url_for('static', filename='js/your_script.js') }}"></script>
 </head>
-<body>
+<body onload="newMap()">
+    <div id="sidebar">
+        <div id="bus_stops">
+            <!-- Bus stop template -->
+            <div class="bus_stop" id="1">
+                <label for="start_node">Start bus stop ID:</label>
+                <input type="text" class="start_node" name="start_node[]"><br><br>
+                
+                <label for="end_node">Destination bus stop ID:</label>
+                <input type="text" class="end_node" name="end_node[]"><br><br>
+            </div>
+        </div>
+
+        <button onclick="addBusStop()">Add Bus Route</button>
+        <button onclick="updateMap()">Update Map</button>
+    </div>
     <div id="map-container"></div>
-    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
-    <script src="{{ url_for('static', filename='your_script.js') }}"></script>
+
+    <script>
+        function addBusStop() {
+            // Clone the bus stop template and increment the ID
+            var busStopTemplate = document.querySelector('.bus_stop');
+            var newBusStop = busStopTemplate.cloneNode(true);
+            var currentId = parseInt(newBusStop.id);
+            newBusStop.id = (currentId + 1).toString();
+
+            // Reset input values
+            newBusStop.querySelector('.start_node').value = '';
+            newBusStop.querySelector('.end_node').value = '';
+
+            // Append the new bus stop to the container
+            document.getElementById('bus_stops').appendChild(newBusStop);
+        }
+    </script>
 </body>
 </html>

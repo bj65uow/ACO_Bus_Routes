@@ -5,8 +5,22 @@ from itertools import combinations
 import osmnx as ox
 from shapely.geometry import Point
 
+from plot_nodes import plot_area, plot_census, find_node
+
+import signal
+
+stop_flag = False
+
+def handle_interrupt(signum, frame):
+    global stop_flag
+    print('\nFinished iteration')
+    stop_flag = True
+
+# Register the custom handler for Ctrl+C
+signal.signal(signal.SIGINT, handle_interrupt)
+
 def ant_colony_optimisation(
-    graph, source, destination, num_ants, iterations, evaporation_rate, alpha=1, beta=1
+    graph, source, destination, num_ants, iterations, evaporation_rate, alpha=1, beta=5
 ):
     # Initialise pheromone levels
     pheromone_levels = {edge: 1.0 for edge in graph.edges()}
@@ -16,7 +30,19 @@ def ant_colony_optimisation(
     best_distance = float("inf")
 
     i = 0
+    global stop_flag
     for _ in range(iterations):
+        # Allow early finish
+        if stop_flag:
+            break
+
+        global distance_cache
+        global pheromones_cache
+        global population_cache
+        distance_cache = {}
+        pheromones_cache = {}
+        population_cache = {}
+
         ant_paths = []
         # print("Iteration " + str(i))
         i += 1
@@ -69,25 +95,40 @@ def ant_move(graph, source, destination, pheromone_levels, alpha, beta):
     return path
 
 # TODO: Make probabilities match original paper
+# Define hash tables for caching
+distance_cache = {}
+pheromones_cache = {}
+population_cache = {}
+
 def calculate_probabilities(
-    graph, current_node, destination, pheromone_levels, alpha, beta, gamma = 0
+    graph, current_node, destination, pheromone_levels, alpha, beta, gamma=0
 ):
     neighbors = list(graph.neighbors(current_node))
     probabilities = []
 
     # Calculate probabilities for each neighbor
     for neighbor in neighbors:
-        pheromone = pheromone_levels.get(
-            (current_node, neighbor),
-            pheromone_levels.get((neighbor, current_node), 1.0),
-        )
-        distance = graph[current_node][neighbor].get(
-            "weight", 1.0
-        )  # Assuming weighted graph
+        # Check if values are already in cache, otherwise calculate and cache
+        if (current_node, neighbor) not in pheromones_cache:
+            pheromones_cache[(current_node, neighbor)] = pheromone_levels.get(
+                (current_node, neighbor),
+                pheromone_levels.get((neighbor, current_node), 1.0),
+            )
+
+        if (current_node, neighbor) not in distance_cache:
+            distance_cache[(current_node, neighbor)] = graph[current_node][neighbor].get(
+                "weight", 1.0
+            )
+
+        if neighbor not in population_cache:
+            population_cache[neighbor] = graph.nodes[neighbor].get("sum_population", 60)
+
+        pheromone = pheromones_cache[(current_node, neighbor)]
+        distance = distance_cache[(current_node, neighbor)]
 
         # Add the "population" attribute to the calculation
-        population = graph.nodes[neighbor].get("sum_population", 60)
-        normalised_pop = (population - 6)/(150-6)
+        population = population_cache[neighbor]
+        normalised_pop = (population - 6) / (150 - 6)
 
         # Calculate the probability using the formula for ant movement
         probability = (pheromone**alpha) * ((1 / distance) ** beta) * (normalised_pop ** gamma)
@@ -161,69 +202,31 @@ def update_pheromone(graph, pheromone_levels, ant_paths, evaporation_rate, Q=1.0
                 pheromone_levels[edge]
 
 
-def create_graph_with_distances(bus_stops):
-    # Create a NetworkX graph and add nodes
-    G = nx.Graph()
-    for index, row in bus_stops.iterrows():
-        G.add_node(row['ref'])
+# stops = plot_area()
 
-    nan_nodes = []
-    for node in G.nodes():
-        try:
-            int(node)
-        except ValueError:
-            nan_nodes.append(node)
-    G.remove_nodes_from(nan_nodes)
+# G = plot_census(stops)
 
-    # Add node attributes
-    pos_dict = {row['ref']: (row['geometry'].x, row['geometry'].y, row['sum_population']) for index, row in bus_stops.iterrows()}
-    nx.set_node_attributes(G, pos_dict, 'pos')
-
-    # Add edges with distances
-    for (node1, data1), (node2, data2) in combinations(G.nodes(data=True), 2):
-        distance = (
-            ((data1['pos'][0] - data2['pos'][0])**2 + (data1['pos'][1] - data2['pos'][1])**2)**0.5
-        )
-        G.add_edge(node1, node2, weight=distance)
-
-    return G
-
-
-def find_node(graph, target_node):
-    # min_distance = float('inf')
-    # closest_node = None
-
-    # for node, data in graph.nodes(data=True):
-    #     node_coordinates = data['pos']
-    #     distance = ((node_coordinates[0] - target_coordinates[0])**2 + (node_coordinates[1] - target_coordinates[1])**2)**0.5
-
-    #     if distance < min_distance:
-    #         min_distance = distance
-    #         closest_node = node
-
-    # return closest_node
-    if target_node in graph.nodes:
-        return target_node
-    else:
-        print(target_node + "not found")
+# G = nx.Graph(G)
 
 # # Example usage
 # source_coordinates = (176.167548, -37.682783)  # Replace with your source coordinates
-# destination_coordinates = (176.283595, -37.703196)  # Replace with your destination coordinates
+# destination_coordinates = (176.283595, -37.703196)  # Replace with your destination coordinates 176.3324474, -37.7205095
 
-# source_node = find_closest_node(G, source_coordinates)
-# destination_node = find_closest_node(G, destination_coordinates)
+# source_node = find_node(G, source_coordinates)
+# destination_node = find_node(G, destination_coordinates)
 
 # print(f"Closest Source Node: {source_node}")
 # print(f"Closest Destination Node: {destination_node}")
 
 
-# num_ants = 10
-# iterations = 10
+# num_ants = 20
+# iterations = 15
 # evaporation_rate = 0.2
-
+# import time
+# start = time.time()
 # best_path, best_distance = ant_colony_optimisation(
 #     G, source_node, destination_node, num_ants, iterations, evaporation_rate
 # )
+# print(time.time() - start)
 # # print(f"Best Path: {best_path}")
 # print(f"Best Distance: {best_distance}")

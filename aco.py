@@ -5,8 +5,6 @@ from itertools import combinations
 import osmnx as ox
 from shapely.geometry import Point
 
-from plot_nodes import plot_area, plot_census, find_node
-
 import signal
 
 stop_flag = False
@@ -36,18 +34,11 @@ def ant_colony_optimisation(
         if stop_flag:
             break
 
-        global distance_cache
-        global pheromones_cache
-        global population_cache
-        distance_cache = {}
-        pheromones_cache = {}
-        population_cache = {}
-
         ant_paths = []
         # print("Iteration " + str(i))
         i += 1
         j = 1
-        for ant in range(num_ants):
+        for ant in range(num_ants): 
             print('Iteration ' + str(i) + ', ant ' + str(j) + '  ', end='\r')
             j += 1
             # Ant movement
@@ -78,11 +69,12 @@ def ant_colony_optimisation(
 def ant_move(graph, source, destination, pheromone_levels, alpha, beta):
     current_node = source
     path = [current_node]
+    visited_nodes = set()
 
     while current_node != destination:
         # Calculate probabilities for selecting the next node
         probabilities = calculate_probabilities(
-            graph, current_node, destination, pheromone_levels, alpha, beta
+            graph, current_node, destination, pheromone_levels, alpha, beta, visited_nodes
         )
 
         # Choose the next node based on probabilities
@@ -91,57 +83,50 @@ def ant_move(graph, source, destination, pheromone_levels, alpha, beta):
         # Move to the next node
         current_node = next_node
         path.append(current_node)
+        visited_nodes.add(current_node)
 
     return path
 
-# TODO: Make probabilities match original paper
-# Define hash tables for caching
-distance_cache = {}
-pheromones_cache = {}
-population_cache = {}
-
-def calculate_probabilities(
-    graph, current_node, destination, pheromone_levels, alpha, beta, gamma=0
-):
+def calculate_probabilities(graph, current_node, destination, pheromone_levels, alpha, beta, visited_nodes, gamma=1):
     neighbors = list(graph.neighbors(current_node))
+    unvisited_neighbors = [neighbor for neighbor in neighbors if neighbor not in visited_nodes]
     probabilities = []
 
-    # Calculate probabilities for each neighbor
-    for neighbor in neighbors:
-        # Check if values are already in cache, otherwise calculate and cache
-        if (current_node, neighbor) not in pheromones_cache:
-            pheromones_cache[(current_node, neighbor)] = pheromone_levels.get(
+    # If there are unvisited neighbors, calculate probabilities for them
+    if unvisited_neighbors:
+        # Calculate probabilities for each unvisited neighbor
+        for neighbor in unvisited_neighbors:
+            pheromone = pheromone_levels.get(
                 (current_node, neighbor),
                 pheromone_levels.get((neighbor, current_node), 1.0),
             )
 
-        if (current_node, neighbor) not in distance_cache:
-            distance_cache[(current_node, neighbor)] = graph[current_node][neighbor].get(
-                "weight", 1.0
-            )
+            distance = graph[current_node][neighbor].get("weight", 1.0)
 
-        if neighbor not in population_cache:
-            population_cache[neighbor] = graph.nodes[neighbor].get("sum_population", 60)
+            population = graph.nodes[neighbor].get("sum_population", 60)
+            normalised_pop = (population - 6) / (150 - 6)
 
-        pheromone = pheromones_cache[(current_node, neighbor)]
-        distance = distance_cache[(current_node, neighbor)]
+            # Calculate the probability using the formula for ant movement
+            probability = (pheromone**alpha) * ((1 / distance) ** beta) * (normalised_pop ** gamma)
+            probabilities.append((neighbor, probability))
 
-        # Add the "population" attribute to the calculation
-        population = population_cache[neighbor]
-        normalised_pop = (population - 6) / (150 - 6)
-
-        # Calculate the probability using the formula for ant movement
-        probability = (pheromone**alpha) * ((1 / distance) ** beta) * (normalised_pop ** gamma)
-        probabilities.append((neighbor, probability))
-
-    # Normalize probabilities
-    total_probability = sum(probability for _, probability in probabilities)
-    normalised_probabilities = [
-        (neighbor, probability / total_probability)
-        for neighbor, probability in probabilities
-    ]
+        # Normalize probabilities
+        total_probability = sum(probability for _, probability in probabilities)
+        if total_probability != 0:
+            normalised_probabilities = [
+                (neighbor, probability / total_probability)
+                for neighbor, probability in probabilities
+            ]
+        else:
+            # If total_probability is zero, assign equal probabilities to all neighbors
+            equal_probability = 1.0 / len(unvisited_neighbors)
+            normalised_probabilities = [(neighbor, equal_probability) for neighbor in unvisited_neighbors]
+    else:
+        # If all neighbors are visited, assign zero probability to all of them
+        normalised_probabilities = [(neighbor, 0) for neighbor in neighbors]
 
     return normalised_probabilities
+
 
 
 def choose_next_node(graph, current_node, probabilities):
@@ -155,6 +140,10 @@ def choose_next_node(graph, current_node, probabilities):
         if random_value <= cumulative_probability:
             selected_node = neighbor
             break
+    
+    # If selected_node is still None, choose a random neighbor
+    if selected_node is None and probabilities:
+        selected_node = random.choice(probabilities)[0]
 
     return selected_node
 
@@ -201,6 +190,32 @@ def update_pheromone(graph, pheromone_levels, ant_paths, evaporation_rate, Q=1.0
                 )
                 pheromone_levels[edge]
 
+def create_graph_with_distances(bus_stops):
+    G = nx.Graph()
+    for index, row in bus_stops.iterrows():
+        G.add_node(row['ref'])
+ 
+    nan_nodes = []
+    for node in G.nodes():
+        try:
+            int(node)
+        except ValueError:
+            nan_nodes.append(node)
+    G.remove_nodes_from(nan_nodes)
+ 
+    # Add node attributes
+    pos_dict = {row['ref']: (row['geometry'].x, row['geometry'].y, row['sum_population']) for index, row in bus_stops.iterrows()}
+    nx.set_node_attributes(G, pos_dict, 'pos')
+ 
+    # Add edges with distances
+    for (node1, data1), (node2, data2) in combinations(G.nodes(data=True), 2):
+        distance = (
+            ((data1['pos'][0] - data2['pos'][0])**2 + (data1['pos'][1] - data2['pos'][1])**2)**0.5
+        )
+        G.add_edge(node1, node2, weight=distance)
+ 
+    return G
+
 
 # stops = plot_area()
 
@@ -222,11 +237,9 @@ def update_pheromone(graph, pheromone_levels, ant_paths, evaporation_rate, Q=1.0
 # num_ants = 20
 # iterations = 15
 # evaporation_rate = 0.2
-# import time
-# start = time.time()
+
 # best_path, best_distance = ant_colony_optimisation(
 #     G, source_node, destination_node, num_ants, iterations, evaporation_rate
 # )
-# print(time.time() - start)
 # # print(f"Best Path: {best_path}")
 # print(f"Best Distance: {best_distance}")

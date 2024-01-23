@@ -1,10 +1,11 @@
 from flask import Flask, render_template, request, jsonify
-from plot_nodes import plot_stops, plot_census
+from plot_nodes import plot_stops, plot_census_stops, plot_census_intersections, plot_area, find_node, get_node, get_coords
 from create_display import generate_map
 import aco
 import geopandas as gpd
 import pandas as pd
 from shapely.geometry import LineString
+import networkx as nx
 
 app = Flask(__name__)
 
@@ -25,27 +26,50 @@ def generate_stops():
 
 @app.route('/generate_routes')
 def generate_routes():
-    global stops
-    print('Adding population data')
-    graph = plot_census(stops)
-
-    print('Adding edges')
-    G = aco.create_graph_with_distances(graph)
-
     start_nodes = request.args.getlist('start_node')
     end_nodes = request.args.getlist('end_node')
 
-    num_ants = 10
-    iterations = 10
+    num_ants = request.args.get('num_ants', type=int)
+    iterations = request.args.get('num_iterations', type=int)
     evaporation_rate = 0.2
+
+    mode = request.args.get('mode')
+
+    global stops
 
     # Initialize an array to store the best paths
     best_paths = []
 
+
+    if (mode == 'bus_stops'):
+        print('Adding population data')
+        graph = plot_census_stops(stops)
+
+        print('Adding edges')
+        G = aco.create_graph_with_distances(graph)
+    elif (mode == 'intersections'):
+        print('Plotting roads (before population)')
+        roads = plot_area()
+
+        print('Adding population data')
+        graph = plot_census_intersections(roads)
+
+        print('Adding edges')
+        G = nx.Graph(graph)
+    else:
+        print('ERROR: No mode')
+
     # Iterate through each route
     for start_value, end_value in zip(start_nodes, end_nodes):
-        source_node = aco.find_node(G, start_value)
-        destination_node = aco.find_node(G, end_value)
+        if(mode == 'bus_stops'):
+            source_node = get_node(G, start_value)
+            destination_node = get_node(G, end_value)
+        elif(mode == 'intersections'):
+            start = get_coords(stops, start_value)
+            end = get_coords(stops, end_value)
+
+            source_node = find_node(G, start)
+            destination_node = find_node(G, end)
 
         if source_node and destination_node is not None:
             best_path, best_distance = aco.ant_colony_optimisation(
@@ -60,10 +84,11 @@ def generate_routes():
     line_gdf = gpd.GeoDataFrame(geometry=lines)
 
     # Display line_gdf and origin graph together
-    graph = pd.concat([graph, line_gdf])
+    map = pd.concat([stops, line_gdf])
 
     # Create leaflet
-    figure = generate_map(graph)
+    colours = (['black'] * len(stops.index)) + (['red', 'blue', 'green'][:len(line_gdf.index)])
+    figure = generate_map(map)
 
     map_html = figure.get_root()._repr_html_()
     return map_html

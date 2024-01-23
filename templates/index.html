@@ -5,41 +5,40 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/main.css') }}" />
     <title>Folium Map</title>
-    <script src="{{ url_for('static', filename='js/your_script.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
 </head>
 <body onload="newMap()">
     <div id="sidebar">
+        <h2>Ant Colony Optimisation algorithm bus routes</h2>
         <div id="bus_stops">
             <!-- Bus stop template -->
             <div class="bus_stop" id="1">
                 <label for="start_node">Start bus stop ID:</label>
-                <input type="text" class="start_node" name="start_node[]"><br><br>
+                <input type="text" class="start_node" name="start_node[]">
                 
                 <label for="end_node">Destination bus stop ID:</label>
-                <input type="text" class="end_node" name="end_node[]"><br><br>
+                <input type="text" class="end_node" name="end_node[]">
             </div>
         </div>
 
         <button onclick="addBusStop()">Add Bus Route</button>
-        <button onclick="updateMap()">Update Map</button>
+        <button id="remove_last_stop" onclick="removeLastBusStop()">Remove Last Bus Route</button><br><br>
+        <button onclick="updateMap()"><b>Run algorithm</b></button>
+
+        <!-- Settings menu -->
+        <div id="settings">
+            <label for="num_ants">Number of Ants:</label>
+            <input type="number" id="num_ants" value="10">
+            
+            <label for="num_iterations">Number of Iterations:</label>
+            <input type="number" id="num_iterations" value="10">
+
+            <!-- Mode selection radio buttons -->
+            <label>Mode:</label>
+            <label><input type="radio" name="mode" value="bus_stops" checked> Bus Stops</label>
+            <label><input type="radio" name="mode" value="intersections"> Intersections</label>
+        </div>
     </div>
     <div id="map-container"></div>
-
-    <script>
-        function addBusStop() {
-            // Clone the bus stop template and increment the ID
-            var busStopTemplate = document.querySelector('.bus_stop');
-            var newBusStop = busStopTemplate.cloneNode(true);
-            var currentId = parseInt(newBusStop.id);
-            newBusStop.id = (currentId + 1).toString();
-
-            // Reset input values
-            newBusStop.querySelector('.start_node').value = '';
-            newBusStop.querySelector('.end_node').value = '';
-
-            // Append the new bus stop to the container
-            document.getElementById('bus_stops').appendChild(newBusStop);
-        }
-    </script>
 </body>
 </html>

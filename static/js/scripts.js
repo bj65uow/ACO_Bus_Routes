@@ -78,3 +78,12 @@ function removeLastBusStop() {
         busStopsContainer.removeChild(lastBusStop);
     }
 }
+
+function toggleSettingsPopup() {
+    var popup = document.getElementById("settings-popup");
+    popup.style.display = (popup.style.display === "none" || popup.style.display === "") ? "block" : "none";
+}
+
+function closeSettingsPopup() {
+    document.getElementById("settings-popup").style.display = "none";
+}

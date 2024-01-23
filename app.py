@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, jsonify
 from plot_nodes import plot_stops, plot_census_stops, plot_census_intersections, plot_area, find_node, get_node, get_coords
-from create_display import generate_map
+from create_display import generate_map, generate_map_colour
 import aco
 import geopandas as gpd
 import pandas as pd
@@ -19,7 +19,8 @@ def generate_stops():
     stops = plot_stops()
     
     # Create leaflet
-    figure = generate_map(stops)
+    colours = (['#ABABAB'] * len(stops.index))
+    figure = generate_map_colour(stops, colours)
 
     map_html = figure.get_root()._repr_html_()
     return map_html
@@ -87,8 +88,8 @@ def generate_routes():
     map = pd.concat([stops, line_gdf])
 
     # Create leaflet
-    colours = (['black'] * len(stops.index)) + (['red', 'blue', 'green'][:len(line_gdf.index)])
-    figure = generate_map(map)
+    colours = (['#ABABAB'] * len(stops.index)) + (['blue', 'red', 'green'][:len(line_gdf.index)])
+    figure = generate_map_colour(map, colours)
 
     map_html = figure.get_root()._repr_html_()
     return map_html

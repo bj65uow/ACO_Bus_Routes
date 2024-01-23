@@ -1,8 +1,8 @@
-
 body {
     margin: 0;
     font-family: 'Arial', sans-serif;
     display: flex;
+    height: 100vh; /* Set the body height to fill the viewport */
 }
 
 #sidebar {
@@ -11,11 +11,16 @@ body {
     background-color: #f1f1f1;
     box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
     z-index: 1;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto; /* Allow sidebar to scroll if content exceeds the height of the sidebar */
+    flex-shrink: 0; /* Prevent the sidebar from shrinking */
 }
 
 #map-container {
     flex-grow: 1;
     position: relative;
+    overflow-y: auto; /* Allow the page to scroll if the map content exceeds the height of the viewport */
 }
 
 .bus_stop {
@@ -59,9 +64,86 @@ button#remove_last_stop {
     border: none;
     border-radius: 5px;
     cursor: pointer;
-    margin-top: 10px;
+    margin-bottom: 30px;
 }
 
 button#remove_last_stop:hover {
     background-color: #e55454;
+}
+
+#settings_button {
+    margin-top: 20px;
+    background-color: grey;
+}
+
+#settings_button:hover {
+    background-color: darkgrey;
+}
+
+#settings {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    padding: 20px;
+    background-color: #f1f1f1;
+    z-index: 2;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 5px;
+}
+
+#settings label {
+    display: block;
+    margin-bottom: 5px;
+}
+
+#settings input {
+    width: calc(100% - 22px);
+    padding: 8px;
+    box-sizing: border-box;
+    margin-bottom: 10px;
+}
+
+#settings label input {
+    width: auto;
+    margin-right: 5px;
+}
+
+.popup {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    padding: 20px;
+    background-color: #f1f1f1;
+    z-index: 2;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 5px;
+}
+
+.popup label {
+    display: block;
+    margin-bottom: 5px;
+}
+
+.popup input {
+    width: calc(100% - 22px);
+    padding: 8px;
+    box-sizing: border-box;
+    margin-bottom: 10px;
+}
+
+.popup label input {
+    width: auto;
+    margin-right: 5px;
+}
+
+.popup .close {
+    position: absolute;
+    top: 5px;
+    right: 10px;
+    font-size: 20px;
+    cursor: pointer;
 }

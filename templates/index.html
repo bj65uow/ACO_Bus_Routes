@@ -22,16 +22,21 @@
         </div>
 
         <button onclick="addBusStop()">Add Bus Route</button>
-        <button id="remove_last_stop" onclick="removeLastBusStop()">Remove Last Bus Route</button><br><br>
+        <button id="remove_last_stop" onclick="removeLastBusStop()">Remove Last Bus Route</button>
+
         <button onclick="updateMap()"><b>Run algorithm</b></button>
 
         <!-- Settings menu -->
-        <div id="settings">
+        <button id="settings_button" onclick="toggleSettingsPopup()">Settings</button>
+
+        <!-- Settings popup -->
+        <div id="settings-popup" class="popup">
+            <span class="close" onclick="closeSettingsPopup()">&times;</span>
             <label for="num_ants">Number of Ants:</label>
-            <input type="number" id="num_ants" value="10">
+            <input type="number" id="num_ants" value="250">
             
             <label for="num_iterations">Number of Iterations:</label>
-            <input type="number" id="num_iterations" value="10">
+            <input type="number" id="num_iterations" value="1000">
 
             <!-- Mode selection radio buttons -->
             <label>Mode:</label>

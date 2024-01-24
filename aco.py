@@ -87,7 +87,7 @@ def ant_move(graph, source, destination, pheromone_levels, alpha, beta):
 
     return path
 
-def calculate_probabilities(graph, current_node, destination, pheromone_levels, alpha, beta, visited_nodes, gamma=1):
+def calculate_probabilities(graph, current_node, destination, pheromone_levels, alpha, beta, visited_nodes, gamma=1, delta=0.2):
     neighbors = list(graph.neighbors(current_node))
     unvisited_neighbors = [neighbor for neighbor in neighbors if neighbor not in visited_nodes]
     probabilities = []
@@ -101,13 +101,15 @@ def calculate_probabilities(graph, current_node, destination, pheromone_levels, 
                 pheromone_levels.get((neighbor, current_node), 1.0),
             )
 
-            distance = graph[current_node][neighbor].get("weight", 1.0)
+            distance_to_neighbour = graph[current_node][neighbor].get("weight", 1.0)
 
             population = graph.nodes[neighbor].get("sum_population", 60)
             normalised_pop = (population - 6) / (150 - 6)
 
+            distance_to_origin = graph.nodes[current_node]['distance_to_origin']
+
             # Calculate the probability using the formula for ant movement
-            probability = (pheromone**alpha) * ((1 / distance) ** beta) * (normalised_pop ** gamma)
+            probability = (pheromone**alpha) * ((1 / distance_to_neighbour) ** beta) * (normalised_pop ** gamma) * ((1 / distance_to_origin) ** delta)
             probabilities.append((neighbor, probability))
 
         # Normalize probabilities
@@ -192,9 +194,10 @@ def update_pheromone(graph, pheromone_levels, ant_paths, evaporation_rate, Q=1.0
 
 def create_graph_with_distances(bus_stops):
     G = nx.Graph()
+
     for index, row in bus_stops.iterrows():
-        G.add_node(row['ref'])
- 
+        G.add_node(row['ref'], pos=(row['geometry'].x, row['geometry'].y, row['sum_population']))
+
     nan_nodes = []
     for node in G.nodes():
         try:
@@ -202,18 +205,22 @@ def create_graph_with_distances(bus_stops):
         except ValueError:
             nan_nodes.append(node)
     G.remove_nodes_from(nan_nodes)
- 
-    # Add node attributes
-    pos_dict = {row['ref']: (row['geometry'].x, row['geometry'].y, row['sum_population']) for index, row in bus_stops.iterrows()}
-    nx.set_node_attributes(G, pos_dict, 'pos')
- 
-    # Add edges with distances
+
+    # Add edges with distances and calculate the distance from the origin to each node
     for (node1, data1), (node2, data2) in combinations(G.nodes(data=True), 2):
-        distance = (
-            ((data1['pos'][0] - data2['pos'][0])**2 + (data1['pos'][1] - data2['pos'][1])**2)**0.5
-        )
+        distance = ((data1['pos'][0] - data2['pos'][0]) ** 2 + (data1['pos'][1] - data2['pos'][1]) ** 2) ** 0.5
         G.add_edge(node1, node2, weight=distance)
- 
+
+    return G
+
+def calc_origin_dist(G, origin):
+    # Calculate the distance from the origin to each node
+    for node in G.nodes():
+        distance_to_origin = ((G.nodes[node]['pos'][0] - G.nodes[origin]['pos'][0]) ** 2 + (G.nodes[node]['pos'][1] - G.nodes[origin]['pos'][1]) ** 2) ** 0.5
+        G.nodes[node]['distance_to_origin'] = distance_to_origin
+
+    G.nodes[origin]['distance_to_origin'] = 1
+
     return G
 
 

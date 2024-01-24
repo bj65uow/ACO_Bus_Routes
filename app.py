@@ -73,6 +73,8 @@ def generate_routes():
             destination_node = find_node(G, end)
 
         if source_node and destination_node is not None:
+            G = aco.calc_origin_dist(G, source_node)
+            
             best_path, best_distance = aco.ant_colony_optimisation(
                 G, source_node, destination_node, num_ants, iterations, evaporation_rate
             )

@@ -11,7 +11,7 @@ stop_flag = False
 
 def handle_interrupt(signum, frame):
     global stop_flag
-    print('\nFinished iteration')
+    print('\nFinishing iteration')
     stop_flag = True
 
 # Register the custom handler for Ctrl+C

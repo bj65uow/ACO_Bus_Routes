@@ -6,6 +6,7 @@ import geopandas as gpd
 import pandas as pd
 from shapely.geometry import LineString
 import networkx as nx
+from itertools import cycle, islice
 
 app = Flask(__name__)
 
@@ -49,7 +50,7 @@ def generate_routes():
         print('Adding edges')
         G = aco.create_graph_with_distances(graph)
     elif (mode == 'intersections'):
-        print('Plotting roads (before population)')
+        print('Plotting roads')
         roads = plot_area()
 
         print('Adding population data')
@@ -61,6 +62,7 @@ def generate_routes():
         print('ERROR: No mode')
 
     # Iterate through each route
+    routes = 1
     for start_value, end_value in zip(start_nodes, end_nodes):
         if(mode == 'bus_stops'):
             source_node = get_node(G, start_value)
@@ -73,6 +75,9 @@ def generate_routes():
             destination_node = find_node(G, end)
 
         if source_node and destination_node is not None:
+            print('\nRoute number ' + str(routes))
+            routes += 1
+
             G = aco.calc_origin_dist(G, source_node)
             
             best_path, best_distance = aco.ant_colony_optimisation(
@@ -90,7 +95,7 @@ def generate_routes():
     map = pd.concat([stops, line_gdf])
 
     # Create leaflet
-    colours = (['#ABABAB'] * len(stops.index)) + (['blue', 'red', 'green'][:len(line_gdf.index)])
+    colours = (['#ABABAB'] * len(stops.index)) + list(islice((cycle(['#0E5A45', '#E1342E', '#6ACAC6', '#8E4A23', '#5B8539', '#D90F7D', '#675297', '#A71E26', '#11B26D', '#F8EA10', '#D6469E', '#BA64AA', '#53A146', '#C77E27', '#125CAB'])), len(line_gdf.index)))
     figure = generate_map_colour(map, colours)
 
     map_html = figure.get_root()._repr_html_()

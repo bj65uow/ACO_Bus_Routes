@@ -147,3 +147,17 @@ button#remove_last_stop:hover {
     font-size: 20px;
     cursor: pointer;
 }
+
+.popup button {
+    background-color: #4CAF50;
+    color: white;
+    padding: 10px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-top: 20px; /* Adjust the margin as needed */
+}
+
+.popup button:hover {
+    background-color: #45a049;
+}

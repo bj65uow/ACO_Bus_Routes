@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/main.css') }}" />
-    <title>Folium Map</title>
+    <title>ACO Map</title>
     <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
 </head>
 <body onload="newMap()">
@@ -30,8 +30,8 @@
         <button id="settings_button" onclick="toggleSettingsPopup()">Settings</button>
 
         <!-- Settings popup -->
+        <!-- Settings popup -->
         <div id="settings-popup" class="popup">
-            <span class="close" onclick="closeSettingsPopup()">&times;</span>
             <label for="num_ants">Number of Ants:</label>
             <input type="number" id="num_ants" value="250">
             
@@ -42,6 +42,9 @@
             <label>Mode:</label>
             <label><input type="radio" name="mode" value="bus_stops" checked> Bus Stops</label>
             <label><input type="radio" name="mode" value="intersections"> Intersections</label>
+
+            <!-- Done button at the bottom -->
+            <button onclick="closeSettingsPopup()">Done</button>
         </div>
     </div>
     <div id="map-container"></div>
